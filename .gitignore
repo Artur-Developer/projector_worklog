@@ -1,0 +1,52 @@
+# phpstorm project files
+.idea
+
+# netbeans project files
+nbproject
+
+# vscode project files
+.vscode
+
+# zend studio for eclipse project files
+.buildpath
+.project
+.settings
+
+# windows thumbnail cache
+Thumbs.db
+
+# composer vendor dir
+/vendor
+
+# composer itself is not needed
+composer.phar
+
+# Mac DS_Store Files
+.DS_Store
+
+# phpunit itself is not needed
+phpunit.phar
+# local phpunit config
+/phpunit.xml
+
+# less map files
+*.css.map
+
+tests/_output/*
+tests/_support/_generated
+/web/index-local.php
+/web/index-payment-local.php
+/config/*-local.php
+/web/*-local.php
+
+commands/LocalController.php
+
+# generated files
+web/uploads/
+/tests/*
+/common/cert/*
+/yii-local.php
+/web/lays_movie_auths.csv
+/web/lays_movie_orders.csv
+/web/lays_movie_regs.csv
+/phpunit.bat
