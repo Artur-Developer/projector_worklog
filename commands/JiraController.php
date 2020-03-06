@@ -14,7 +14,7 @@ use yii\helpers\ArrayHelper;
 use Yii;
 
 // check user_id between pro_timesheet and jira_work_logs
-//
+
 //SELECT pt.*,b.id_timesheet, u.id_user AS save_u_id
 //FROM projector.sys_users u
 //JOIN (
@@ -30,11 +30,12 @@ class JiraController extends Controller
         print  $text . "\n";
     }
 
-    public function setLibTask($response_task, $summary, $project_id) {
+    public function setLibTask($response_task, $summary, $project_id, $id_work = 14) {
         set_time_limit(0);
         $new_lib_task = new LibTasks();
         $new_lib_task->name = $summary;
-        $new_lib_task->id_prj = $project_id;
+        $new_lib_task->id_work = $id_work;
+        $new_lib_task->id_prj = !empty($project_id) ? $project_id : 0;
         $new_lib_task->validate() && $new_lib_task->save()
             ? $this->getMessage("create lib_task for table lib_tasks " .
             " | id => " . $new_lib_task->id_task . " project_id => " . $new_lib_task->id_prj)
@@ -44,7 +45,7 @@ class JiraController extends Controller
         return $new_lib_task->id_task;
     }
 
-    public function getWorkLogs($task_id)
+    public function getWorkLogs($task_id, $id_pro_project, $id_task)
     {
         set_time_limit(0);
         $request = new JiraApi();
@@ -71,7 +72,7 @@ class JiraController extends Controller
                             $val_work_logs->timeSpentSeconds,
                             $val_work_logs->started,
                             $val_work_logs->created,
-                            $val_work_logs->updated
+                            $this->pub_today()
                         )
                             ? $this->getMessage("update work_logs for table jira_work_logs " .
                             " | id => " . $val_work_logs->id . " task_id => " . $val_work_logs->issueId)
@@ -80,10 +81,11 @@ class JiraController extends Controller
 
                         // To go point (4) for carry data about used time in table 'projector.pro_timesheet'.
                         $time_sheet_one = ProTimesheet::findOne($work_logs->id_timesheet);
-                        if (!empty($time_sheet_one->id)) { // if not empty proTimeSheet
+                        if (!empty($time_sheet_one->id_timesheet)) { // if not empty proTimeSheet
+                            $this->getMessage('updateProTimeSheet id_pro_project = ' . $id_pro_project);
                             $time_sheet_one->saveProTimeSheet( // update proTimeSheet
-                                $work_logs->id,
-                                $work_logs->issueId,
+                                $id_pro_project,
+                                $id_task, // lib_task.id after created
                                 $sys_user_id,
                                 $work_logs->timeSpentSeconds,
                                 $work_logs->updated
@@ -93,11 +95,12 @@ class JiraController extends Controller
                                 : $this->getMessage("error save pro_timesheet for table pro_timesheet  " .
                                 " | id => " . $val_work_logs->id . " id_task => " . $val_work_logs->issueId);
                         } else { // if empty proTimeSheet
+                            $this->getMessage('newProTimeSheet id_pro_project = ' . $id_pro_project);
                             $this->newProTimeSheet(
                                 $work_logs, // object finded work log
                                 $val_work_logs, // api response item work_log
-                                $work_logs->id,
-                                $work_logs->issueId,
+                                $id_pro_project,
+                                $id_task, // lib_task.id after created
                                 $sys_user_id,
                                 $work_logs->timeSpentSeconds,
                                 $work_logs->updated
@@ -111,7 +114,7 @@ class JiraController extends Controller
                         $work_logs->timeSpentSeconds = $val_work_logs->timeSpentSeconds;
                         $work_logs->started = $val_work_logs->started;
                         $work_logs->created = $val_work_logs->created;
-                        $work_logs->updated = $val_work_logs->updated;
+                        $work_logs->updated = $this->pub_today();
                         $work_logs->save()
                             ? $this->getMessage("save work_logs for table jira_work_logs " .
                             " | id => " . $work_logs->id . " task_id => " . $work_logs->issueId)
@@ -119,21 +122,51 @@ class JiraController extends Controller
                             " | id => " . $val_work_logs->id . " id_task => " . $val_work_logs->issueId);
 
                         // To go point (4) for carry data about used time in table 'projector.pro_timesheet'.
+                        $this->getMessage('newProTimeSheet id_pro_project = ' . $id_pro_project);
                         $this->newProTimeSheet(
                             $work_logs, // object finded work log
                             $val_work_logs, // api response item work_log
-                            $work_logs->id,
-                            $work_logs->issueId,
+                            $id_pro_project,
+                            $id_task, // lib_task.id after created
                             $sys_user_id,
                             $work_logs->timeSpentSeconds,
                             $work_logs->updated
                         );
                     }
-
                 }
             }
         }
     }
+
+    // this methods need for converte and save pro_timesheet in field report_time
+    // it's not my code! it's legacy projector
+    public function pub_day_return($init)
+    {
+        $time_format = $this->pub_format_date(array("unixtime" => $init));
+        return mktime(0,0,0,$time_format["n"], $time_format["d"], $time_format["Y"]);
+    }
+
+    public function pub_today()
+    {
+        date_default_timezone_set('UTC');
+        $time = strtotime(date('Y-m-d'));
+
+        return $this->pub_day_return($time);
+    }
+
+    public function pub_format_date($init)
+    {
+        $current_date["d"] = date("d", $init["unixtime"]);
+        $current_date["m"] = date("m", $init["unixtime"]);
+        $current_date["n"] = date("n", $init["unixtime"]);
+        $current_date["Y"] = date("Y", $init["unixtime"]);
+
+        $current_date["W"] = date("w", $init["unixtime"]);
+        $current_date["M"] = date("n", $init["unixtime"]) - 1;
+
+        return $current_date;
+    }
+    ///////////////////////////////////////////////////////////////////////////////
 
     public function newProTimeSheet ($work_logs, $response_val_work_logs, $id_project, $id_task, $id_user, $spend_time, $report_time) {
         $this->getMessage("////// Iteration _4_ update ProTimeSheet");
@@ -170,6 +203,7 @@ class JiraController extends Controller
         $send_messages = new JiraAlert();
         $send_messages->sendError('check send email');
     }
+
     public function actionRunProjectorJira()
     {
         set_time_limit(0);
@@ -244,7 +278,7 @@ class JiraController extends Controller
             }
         }
         // Iteration _2_ all task in project
-        $all_project = JiraProjects::find()->select(['id','key'])->all();
+        $all_project = JiraProjects::find()->all();
         $request = new JiraApi();
         $this->getMessage("////// Iteration _2_ tasks in project");
         sleep(2);
@@ -264,7 +298,7 @@ class JiraController extends Controller
                     if (!empty($check_task->id)) {
                         // task don't updated
                         if ($check_task->timespent != $value_response_task->fields->timespent) {
-                            $this->getWorkLogs($check_task->id);
+                            $this->getWorkLogs($check_task->id,$project->id_project,$check_task->id_task);
                         }
                         $check_task->updateTask(
                             $value_response_task->id,
@@ -299,7 +333,7 @@ class JiraController extends Controller
                             " | id => " . $value_response_task->id . " id_task => " . $value_response_task->fields->project->key);
 
                         // Than in table ‘projector.lib_tasks’ create post in that context
-                        $lib_task_id = $this->setLibTask($value_response_task,$value_response_task->fields->summary,$new_task->project_id);
+                        $lib_task_id = $this->setLibTask($value_response_task,$value_response_task->fields->summary,$project->id_project);
 
                         $new_task->id_task = $lib_task_id;
                         $new_task->save()
@@ -309,7 +343,7 @@ class JiraController extends Controller
                             " | id => " . $value_response_task->id . " id_task => " . $value_response_task->fields->project->key);
                         //// get timesheets
                         $this->getMessage("////// Iteration _3_ get issue work_logs new " . $new_task->id);
-                        $this->getWorkLogs($new_task->id);
+                        $this->getWorkLogs($new_task->id,$project->id_project,$lib_task_id);
                     }
                 }
             }

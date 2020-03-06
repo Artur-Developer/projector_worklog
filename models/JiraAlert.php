@@ -48,8 +48,8 @@ class JiraAlert extends \yii\db\ActiveRecord
 //        $rand = 48;
         foreach (self::find()->all() as $key_email => $email) {
 //            $dateTime =  "'" . date('Y-m-d H:i:s') . "'" ;
-            Yii::$app->db->createCommand("INSERT INTO `c_send_error` "
-                    . "(`email`, `text`, `title`, `created`,`send_id`) VALUES ('" . $email->email . "', ".$text.",'".$title_error."', $dateTime, $rand)")->execute();
+//            Yii::$app->db->createCommand("INSERT INTO `c_send_error` "
+//                    . "(`email`, `text`, `title`, `created`,`send_id`) VALUES ('" . $email->email . "', ".$text.",'".$title_error."', $dateTime, $rand)")->execute();
             Yii::$app->mailer->compose()
                 ->setTo($email->email)
                 ->setSubject($title_error)
