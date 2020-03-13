@@ -55,7 +55,7 @@ class JiraController extends Controller
                 ? strval($response->raw_body)
                 : json_encode($response->errorMessages);
             $send_messages = new JiraAlert();
-            $send_messages->sendError($error);
+            $send_messages->sendError("Iteration _3_ get issue work_logs \n" . $error);
         }
         if (!empty($response->body->worklogs) && count($response->body->worklogs) > 0) {
             foreach ($response->body->worklogs as $key_work_logs => $val_work_logs) {
@@ -207,7 +207,6 @@ class JiraController extends Controller
     public function actionRunProjectorJira()
     {
         set_time_limit(0);
-        // Iteration _1_ all projects
         $request = new JiraApi();
         $response = $request->getAllProject();
         if (isset($response->code) && $response->code != 200) {
@@ -215,7 +214,7 @@ class JiraController extends Controller
                 ? strval($response->raw_body)
                 : json_encode($response->errorMessages);
             $send_messages = new JiraAlert();
-            $send_messages->sendError($error);
+            $send_messages->sendError("Iteration _1_ all projects \n" .$error);
         }
         if (count($response->body) > 0) {
             $this->getMessage("////// Iteration _1_ projects");
@@ -290,7 +289,7 @@ class JiraController extends Controller
                     ? strval($response->raw_body)
                     : json_encode($response->errorMessages);
                 $send_messages = new JiraAlert();
-                $send_messages->sendError($error);
+                $send_messages->sendError("Iteration _2_ tasks in project \n" . $error);
             }
             if (!empty($response_task->issues) && count($response_task->issues) > 0) {
                 foreach ($response_task->issues as $key_response_task => $value_response_task) {
