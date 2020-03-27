@@ -61,7 +61,10 @@ class ProTimesheet extends \yii\db\ActiveRecord
     }
 
     public function saveProTimeSheet($id_project, $id_task, $id_user, $spend_time, $report_time) {
-        $this->id_project = !empty($id_project) ? $id_project : 0;
+        if (empty($id_project) || intval($id_project) == 0) {
+            return false;
+        }
+        $this->id_project = $id_project;
         $this->id_task = $id_task;
         $this->id_user = empty($id_user) ? 0 : $id_user;
         $this->spend_time = intval($spend_time) / 60;
