@@ -2,6 +2,7 @@
 
 namespace app\commands;
 
+use app\models\BuildReport;
 use app\models\JiraAlert;
 use app\models\JiraApi;
 use app\models\JiraProjects;
@@ -48,18 +49,17 @@ class JiraController extends Controller
         return $new_lib_task->id_task;
     }
 
-    public function getWorkLogs($task_id, $id_pro_project, $id_task)
+    public function getWorkLogs($task_id, $id_pro_project, $id_task, $build_report)
     {
         set_time_limit(0);
         $request = new JiraApi();
-//        sleep(1);
         $response = $request->getWorklog($task_id);
         if (isset($response->code) && $response->code != 200) {
             $error = "code = " . $response->code . "; " . isset($response->raw_body)
                 ? strval($response->raw_body)
                 : json_encode($response->errorMessages);
-            $send_messages = new JiraAlert();
-            $send_messages->sendError("Iteration _3_ get issue work_logs \n" . $error);
+
+//            JiraAlert::sendMail("Iteration _3_ get issue work_logs \n" . $error);
         }
         if (!empty($response->body->worklogs) && count($response->body->worklogs) > 0) {
             foreach ($response->body->worklogs as $key_work_logs => $val_work_logs) {
@@ -79,7 +79,7 @@ class JiraController extends Controller
                             $this->pub_today()
                         )
                             ? $this->getMessage("update work_logs for table jira_work_logs " .
-                            " | id => " . $val_work_logs->id . " task_id => " . $val_work_logs->issueId)
+                            " | id => " . $val_work_logs->id . " task_id => " . $val_work_logs->issueId) ?: $build_report->setEntity('update_worklog')
                             : $this->getMessage("error update work_logs for table jira_work_logs  " .
                             " | id => " . $work_logs->id . " id_task => " . $work_logs->issueId);
 
@@ -95,7 +95,7 @@ class JiraController extends Controller
                                 $this->pub_today($work_logs->created)
                             )
                                 ? $this->getMessage("save pro_timesheet for table pro_timesheet " .
-                                " | id => " . $work_logs->id . " task_id => " . $work_logs->issueId)
+                                " | id => " . $work_logs->id . " task_id => " . $work_logs->issueId) ?: $build_report->setEntity('update_timesheet')
                                 : $this->getMessage("error save pro_timesheet for table pro_timesheet  " .
                                 " | id => " . $val_work_logs->id . " id_task => " . $val_work_logs->issueId);
                         } else { // if empty proTimeSheet
@@ -107,7 +107,8 @@ class JiraController extends Controller
                                 $id_task, // lib_task.id after created
                                 $sys_user_id,
                                 $work_logs->timeSpentSeconds,
-                                $this->pub_today($work_logs->created)
+                                $this->pub_today($work_logs->created),
+                                $build_report
                             );
                         }
                     } else {
@@ -121,7 +122,7 @@ class JiraController extends Controller
                         $work_logs->updated = $this->pub_today();
                         $work_logs->save()
                             ? $this->getMessage("save work_logs for table jira_work_logs " .
-                            " | id => " . $work_logs->id . " task_id => " . $work_logs->issueId)
+                            " | id => " . $work_logs->id . " task_id => " . $work_logs->issueId) ?: $build_report->setEntity('new_worklog')
                             : $this->getMessage("error save work_logs for table jira_work_logs  " .
                             " | id => " . $val_work_logs->id . " id_task => " . $val_work_logs->issueId);
 
@@ -134,7 +135,8 @@ class JiraController extends Controller
                             $id_task, // lib_task.id after created
                             $sys_user_id,
                             $work_logs->timeSpentSeconds,
-                            $this->pub_today($val_work_logs->created)
+                            $this->pub_today($val_work_logs->created),
+                            $build_report
                         );
                     }
                 }
@@ -178,9 +180,9 @@ class JiraController extends Controller
     }
     ///////////////////////////////////////////////////////////////////////////////
 
-    public function newProTimeSheet ($work_logs, $response_val_work_logs, $id_project, $id_task, $id_user, $spend_time, $report_time) {
+    public function newProTimeSheet ($work_logs, $response_val_work_logs, $id_project, $id_task, $id_user, $spend_time, $report_time, $build_report) {
         $this->getMessage("////// Iteration _4_ update ProTimeSheet");
-//        sleep(2);
+
         $time_sheet = new ProTimesheet();
         $time_sheet->saveProTimeSheet(
             $id_project,
@@ -190,7 +192,7 @@ class JiraController extends Controller
             $report_time
         )
         ? $this->getMessage("save pro_timesheet for table pro_timesheet " .
-        " | id => " . $id_project . " task_id => " . $id_task)
+        " | id => " . $id_project . " task_id => " . $id_task) ?: $build_report->setEntity('new_timesheet')
         : $this->getMessage("error save pro_timesheet for table pro_timesheet  " .
         " | id => " . $response_val_work_logs->id . " id_task => " . $response_val_work_logs->issueId);
         // updated field id_timesheet from table jira_worklogs
@@ -210,25 +212,30 @@ class JiraController extends Controller
     }
 
     public function actionTestEmail(){
-        $send_messages = new JiraAlert();
-        $send_messages->sendError('check send email');
+
+        $api = new JiraApi();
+        echo '<pre>';
+        print_r($api->getTaskProject('A03BMW20'));
+        echo '</pre>';
+//        JiraAlert::sendMail('check send email');
     }
 
     public function actionRunProjectorJira()
     {
         set_time_limit(0);
+        $build_report = new BuildReport();
         $request = new JiraApi();
         $response = $request->getAllProject();
         if (isset($response->code) && $response->code != 200) {
             $error = "code = " . $response->code . "; " . isset($response->raw_body)
                 ? strval($response->raw_body)
                 : json_encode($response->errorMessages);
-            $send_messages = new JiraAlert();
-            $send_messages->sendError("Iteration _1_ all projects \n" .$error);
+
+//            JiraAlert::sendMail("Iteration _1_ all projects \n" .$error);
         }
         if (count($response->body) > 0) {
             $this->getMessage("////// Iteration _1_ projects");
-//            sleep(2);
+
             foreach ($response->body as $key_response => $response_project) {
                 $object_project = JiraProjects::findOne($response_project->id);
                 if (!empty($object_project->id)) {
@@ -237,7 +244,7 @@ class JiraController extends Controller
                         $response_project->name,
                         $response_project->key
                     ) === true
-                        ? $this->getMessage("update project " . $object_project->key)
+                        ? $this->getMessage("update project " . $object_project->key) ?: $build_report->setEntity('update_prj')
                         : $this->getMessage("error update project" . $response_project->key);
                 } else {
                     $new_project = new JiraProjects();
@@ -246,7 +253,7 @@ class JiraController extends Controller
                         $response_project->name,
                         $response_project->key
                     ) === true
-                        ? $this->getMessage("save new project " . $new_project->key)
+                        ? $this->getMessage("save new project " . $new_project->key) ?: $build_report->setEntity('new_prj')
                         : $this->getMessage("error save " . $response_project->key);
                 }
             }
@@ -281,15 +288,10 @@ class JiraController extends Controller
         $request = new JiraApi();
         $this->getMessage("////// Iteration _2_ tasks in project");
         foreach ($all_project as $key_project => $project) {
-//            sleep(2);
             $response = $request->getTaskProject($project->key);
             $response_task = $response->body;
             if (isset($response->code) && $response->code != 200) {
-                $error = "code = " . $response->code . "; " . isset($response->raw_body)
-                    ? strval($response->raw_body)
-                    : json_encode($response->errorMessages);
-                $send_messages = new JiraAlert();
-                $send_messages->sendError("Iteration _2_ tasks in project \n" . $error);
+                $build_report->setEntity('not_search_task_in_prj');
             }
             if (!empty($response_task->issues) && count($response_task->issues) > 0) {
                 foreach ($response_task->issues as $key_response_task => $value_response_task) {
@@ -301,7 +303,7 @@ class JiraController extends Controller
                         if (!empty($check_task->id)) {
                             // task don't updated
                             if ($check_task->timespent != $value_response_task->fields->timespent) {
-                                $this->getWorkLogs($check_task->id, $project->id_project, $check_task->id_task);
+                                $this->getWorkLogs($check_task->id, $project->id_project, $check_task->id_task, $build_report);
                             }
                             $check_task->updateTask(
                                 $value_response_task->id,
@@ -314,7 +316,7 @@ class JiraController extends Controller
                                 $value_response_task->fields->updated
                             )
                                 ? $this->getMessage("update task for table jira_projects " .
-                                " | id => " . $check_task->id . " project_key => " . $check_task->project_key)
+                                " | id => " . $check_task->id . " project_key => " . $check_task->project_key) ?: $build_report->setEntity('update_task')
                                 : $this->getMessage("error update for table jira_projects  " .
                                 " | id => " . $value_response_task->id . " id_project => " . $value_response_task->fields->project->key);
 
@@ -331,7 +333,7 @@ class JiraController extends Controller
                             $new_task->updated = $value_response_task->fields->updated;
                             $new_task->save()
                                 ? $this->getMessage("create task for table jira_tasks " .
-                                " | id => " . $new_task->id . " project_key => " . $new_task->project_key)
+                                " | id => " . $new_task->id . " project_key => " . $new_task->project_key) ?: $build_report->setEntity('new_task')
                                 : $this->getMessage("error update for table jira_projects  " .
                                 " | id => " . $value_response_task->id . " id_task => " . $value_response_task->fields->project->key);
 
@@ -342,16 +344,19 @@ class JiraController extends Controller
                             $new_task->id_task = $lib_task_id;
                             $new_task->save()
                                 ? $this->getMessage("update id_task for table jira_tasks " .
-                                " | id => " . $new_task->id_task . " id_task => " . $new_task->id_task)
+                                " | id => " . $new_task->id_task . " id_task => " . $new_task->id_task) ?: $build_report->setEntity('new_lib_task')
                                 : $this->getMessage("error update id_task for table jira_tasks  " .
                                 " | id => " . $value_response_task->id . " id_task => " . $value_response_task->fields->project->key);
                             //// get timesheets
                             $this->getMessage("////// Iteration _3_ get issue work_logs new " . $new_task->id);
-                            $this->getWorkLogs($new_task->id, $project->id_project, $lib_task_id);
+                            $this->getWorkLogs($new_task->id, $project->id_project, $lib_task_id, $build_report);
                         }
                     }
                 }
             }
         }
+        $finish_time = new \DateTime();
+        JiraAlert::sendMail($build_report->build($finish_time, "<br>"), 'REPORT JIRA-PROJECTOR INTEGRATION');
+        $this->getMessage($build_report->build($finish_time));
     }
 }
