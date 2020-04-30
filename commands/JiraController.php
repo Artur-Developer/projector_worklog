@@ -11,6 +11,7 @@ use app\models\JiraWorklogs;
 use app\models\LibTasks;
 use app\models\ProTimesheet;
 use yii\console\Controller;
+use yii\db\Exception;
 use yii\helpers\ArrayHelper;
 use Yii;
 
@@ -31,11 +32,26 @@ class JiraController extends Controller
         print  $text . "\n";
     }
 
-    public function setLibTask($response_task, $summary, $project_id, $id_work = 14) {
+    public function setLibTask($response_task, $project_id, $id_work = 14) {
         set_time_limit(0);
         if (empty($project_id) || intval($project_id) == 0) {
             return '';
         }
+        if ($response_task->fields->issuetype->subtask == false){
+            $summary = $response_task->fields->summary;
+        } else if ($response_task->fields->issuetype->subtask == true){
+            $summary = $response_task->fields->parent->fields->summary . ' - ' . $response_task->fields->summary;
+        } else {
+            $summary = 'empty';
+            $this->getMessage('lib task empty ' . 'jira_task => ' . $response_task->id);
+
+            JiraAlert::sendMail(
+                'Lib value name == empt, jira_task.id == ' . $response_task->id . '<br> 
+                [$response_task->fields->parent->fields->summary] => ' . $response_task->fields->parent->fields->summary . '<br>
+                [$response_task->fields->issuetype->subtask] =>' . $response_task->fields->issuetype->subtask . '<br>'
+            );
+        }
+
         $new_lib_task = new LibTasks();
         $new_lib_task->name = $summary;
         $new_lib_task->id_work = $id_work;
@@ -339,7 +355,7 @@ class JiraController extends Controller
 
                             // Than in table ‘projector.lib_tasks’ create post in that context
 
-                            $lib_task_id = $this->setLibTask($value_response_task, $value_response_task->fields->summary, $project->id_project);
+                            $lib_task_id = $this->setLibTask($value_response_task, $project->id_project);
 
                             $new_task->id_task = $lib_task_id;
                             $new_task->save()
