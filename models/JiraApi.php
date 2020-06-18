@@ -30,7 +30,7 @@ class JiraApi
     public function getTaskProject($key_project)
     {
         return Request::get(
-            'https://icnx.atlassian.net/rest/api/3/search?jql=project="' . $key_project . '" AND timeSpent > 0',
+            'https://icnx.atlassian.net/rest/api/3/search?jql=project='. $key_project .' and timespent is not null and updated > "-1d"&fields=key,project,summary,timespent,created,updated,issuetype,parent',
             $this->headers
         );
     }

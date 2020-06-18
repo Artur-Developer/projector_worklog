@@ -59,7 +59,7 @@ class JiraWorklogs extends \yii\db\ActiveRecord
         ];
     }
 
-    public function updateWorkLog($id, $issue_id, $email_adress, $time_spent_seconds, $started, $created, $updated) {
+    public function updateWorkLog($id, $issue_id, $email_adress, $time_spent_seconds, $started, $created,$updated) {
         $this->id = $id;
         $this->issueId = $issue_id;
         $this->emailAdress = $email_adress;

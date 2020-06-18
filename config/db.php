@@ -9,7 +9,7 @@
 //];
 return [
     'class' => 'yii\db\Connection',
-    'dsn' => 'mysql:host=localhost;dbname=test_projector',
+    'dsn' => 'mysql:host=localhost;dbname=projector',
     'username' => 'root',
     'password' => 'm16g15tu',
     'charset' => 'utf8',
